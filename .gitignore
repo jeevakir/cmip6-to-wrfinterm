@@ -1,3 +1,4 @@
 *.log
 *.pyc
 /output
+/miroc6-sample
