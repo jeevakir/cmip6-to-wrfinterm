@@ -27,7 +27,7 @@ def main_run():
     
 
     utils.write_log('Read Config...')
-    cfg_hdl=lib.cfgparser.read_cfg('./conf/config.ini')
+    cfg_hdl=lib.cfgparser.read_cfg('./conf/config-miroc6.ini')
  
     utils.write_log('Construct CMIPHandler...')
     cmip_hdl=lib.cmip_handler.CMIPHandler(cfg_hdl)

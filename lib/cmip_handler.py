@@ -2,6 +2,7 @@
 """Build Observation Station Objects"""
 
 import datetime
+import sys               #jeeva
 import struct
 import pandas as pd 
 import xarray as xr
@@ -135,12 +136,45 @@ class CMIPHandler(object):
             fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
             fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
             fn+='_'+in_cfg['cmip_strt_ts']+'-'+in_cfg['cmip_end_ts']+'.nc'
-            
-            utils.write_log(print_prefix+'Loading '+fn)
-            ds=xr.open_dataset(fn)
-            self.ds[varname]=ds[varname].sel(
+
+# Jeeva - adding different file loading loops for different format files in miroc6 
+
+            if varname == 'ps' and in_cfg['model_name'] == 'MIROC6' :
+                ds_list = []
+                for month in range(self.etl_strt_time.month,self.etl_strt_time.month+12):
+                    fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
+                    fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                    fn+='_'+str(self.etl_strt_time.year)+f"{month:02}"+'010600-'+str(self.etl_strt_time.year)+f"{(month+1):02}"+'010000.nc'
+                    if month == 12:
+                        fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
+                        fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                        fn+='_'+str(self.etl_strt_time.year)+f"{month:02}"+'010600-'+str(self.etl_strt_time.year+1)+'01010000.nc'
+                    
+                    utils.write_log(print_prefix+'Loading '+fn)
+                    ds=xr.open_dataset(fn)
+                    ds_list.append(ds)
+                ds_merged = xr.concat(ds_list, dim='time')
+                self.ds[varname]=ds_merged[varname].sel(
                 time=slice(self.etl_strt_time,self.etl_end_time))
-            ds.close()
+                ds.close()
+            
+            elif varname in ['tas', 'huss', 'mrsos']  and in_cfg['model_name'] == 'MIROC6' : # 3hr no lvlmark files for miroc6
+                fn=in_cfg['input_root']+'/'+varname+'_'+'3hr'+lvlmark+'_'+in_cfg['model_name']
+                fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                fn+='_'+(self.etl_strt_time).strftime('%Y%m')+'010300-'+(self.etl_end_time).strftime('%Y%m')+'010000.nc'
+                utils.write_log(print_prefix+'Loading '+fn)
+                ds=xr.open_dataset(fn)
+                sixhrds=ds.resample(time='6H').nearest()
+                self.ds[varname]=sixhrds[varname].sel(
+                    time=slice(self.etl_strt_time,self.etl_end_time))
+                ds.close()
+            else:
+                utils.write_log(print_prefix+'Loading '+fn)
+                ds=xr.open_dataset(fn)
+                self.ds[varname]=ds[varname].sel(
+                    time=slice(self.etl_strt_time,self.etl_end_time))
+                ds.close()
+
 
     def interp_data(self, tf):
         '''
@@ -156,7 +190,6 @@ class CMIPHandler(object):
                 continue
 
             ds=self.ds[varname].sel(time=tf)
-          
             if varname =='mrsos':
                 ds.values=ds.values*1e-2
 
@@ -195,8 +228,10 @@ class CMIPHandler(object):
 
     
     def write_wrfinterm(self, tf):
-        out_fn=self.out_root+'/'+self.out_prefix+':'+tf.strftime('%Y-%m-%d_%H')
-        
+        if sys.platform == "win32":
+            out_fn=self.out_root+'/'+self.out_prefix+'_'+tf.strftime('%Y-%m-%d_%H')
+        else:
+            out_fn=self.out_root+'/'+self.out_prefix+':'+tf.strftime('%Y-%m-%d_%H')
         utils.write_log(print_prefix+'Writing '+out_fn)
         # dtype='>u4' for header (big-endian, unsigned int)
         wrf_mid = FortranFile(out_fn, 'w', header_dtype=np.dtype('>u4'))
