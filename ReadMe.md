@@ -1,5 +1,6 @@
 # cmip6-to-wrf intermediate binary files (ungrib output)
-# forked from https://github.com/lzhenn/cmip6-to-wrfinterm
+
+## forked from https://github.com/lzhenn/cmip6-to-wrfinterm
 
  I have added miroc6 model to the code and monthly 'ps' files are merged to yearly file. then all 3hr files ('tas',''huss','mrsos') are conevrted to 6hr files. all of this are done internally.
 
