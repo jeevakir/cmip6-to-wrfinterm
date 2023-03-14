@@ -1,4 +1,10 @@
-# cmip6-to-wrfinterm
+# cmip6-to-wrf intermediate binary files (ungrib output)
+# forked from https://github.com/lzhenn/cmip6-to-wrfinterm
+
+ I have added miroc6 model to the code and monthly 'ps' files are merged to yearly file. then all 3hr files ('tas',''huss','mrsos') are conevrted to 6hr files. all of this are done internally.
+
+
+# Notes from original author Zhenning LI
 
 **CMIP6-to-WRFInterim** uses pure python implementation to convert CMIP6 sub-daily output into WRF intermediate files, which are used to drive the WRF model for regional dynamical downscaling usage.
 Currently, only **MPI-ESM-1-2-HR** model has been teseted in **historical run and SSP1/2/5 scenarios**, you may need proper modifications for other model convension.
@@ -149,5 +155,7 @@ CMIP6 data can be downloaded from the [LLNL interface](https://esgf-node.llnl.go
 You may setup your own variable mapping table in `./db/${MODEL_NAME}.csv` if you want to use other models.
 
 **Any question, please contact Zhenning LI (zhenningli91@gmail.com). Since I am receiving many requests recently, please have a short introduction of yourself (e.g. affiliation, research field, etc.) :-).**
+**You can also contact Jeevanand Palanisamy (jeevanand0013@gmail.com) for any doubts and if the original developer is busy. His approach is different than mine** 
+
 
 
