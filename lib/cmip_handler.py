@@ -102,7 +102,7 @@ class CMIPHandler(object):
         self.model_name=in_cfg['model_name']
         self.cmip_strt_ts=in_cfg['cmip_strt_ts']
         self.cmip_end_ts=in_cfg['cmip_end_ts']
-        self.cimp_frq=in_cfg['cmip_frq']
+        self.cmip_frq=in_cfg['cmip_frq']
 
         vtable=in_cfg['vtable_name'].replace('@model',self.model_name)
         self.vtable=pd.read_csv('./db/'+vtable+'.csv')
@@ -112,10 +112,18 @@ class CMIPHandler(object):
         self.out_root=out_cfg['output_root']
         self.out_prefix=out_cfg['output_prefix']
 
+        #file year and month for use below to load files
+        cmip_strt_time=datetime.datetime.strptime(in_cfg['cmip_strt_ts'],'%Y%m%d%H%M')
+        cmip_end_time=datetime.datetime.strptime(in_cfg['cmip_end_ts'],'%Y%m%d%H%M')
+        cmip_strt_year=cmip_strt_time.year
+        cmip_end_year=cmip_end_time.year
+        cmip_strt_month=cmip_strt_time.month
+        cmip_end_month=cmip_end_time.month
+        experiment_id=in_cfg['exp_id']
         # wrf intermidiate slab template
         self.mtemplate=gen_wrf_mid_template()
 
-        dt=datetime.timedelta(hours=int(self.cimp_frq))
+        dt=datetime.timedelta(hours=int(self.cmip_frq))
         self.out_time_series=pd.date_range(
             start=self.etl_strt_time, end=self.etl_end_time, freq=dt)
         # init empty cmip container dict
@@ -127,48 +135,95 @@ class CMIPHandler(object):
         for idx, itm in self.vtable.iterrows():
             varname=itm['src_v']
             lvlmark=itm['lvlmark']
+            cmip_file_frq=str(itm['hour'])
             if lvlmark == 'None':
                 lvlmark=''
             # repeat level to pad missing soil layers
             if itm['type'] == '2d-soilr':
                 continue
             
-            fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
-            fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
-            fn+='_'+in_cfg['cmip_strt_ts']+'-'+in_cfg['cmip_end_ts']+'.nc'
-
 # Jeeva - adding different file loading loops for different format files in miroc6 
 
-            if varname == 'ps' and in_cfg['model_name'] == 'MIROC6' :
-                ds_list = []
-                for month in range(self.etl_strt_time.month,self.etl_strt_time.month+12):
-                    fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
-                    fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
-                    fn+='_'+str(self.etl_strt_time.year)+f"{month:02}"+'010600-'+str(self.etl_strt_time.year)+f"{(month+1):02}"+'010000.nc'
-                    if month == 12:
-                        fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
+            if in_cfg['model_name'] == 'MIROC6' :
+#variable-ps- available in monthly scale hence joined during runtime
+                if varname == 'ps' :
+                    ds_list = []
+                    for month in range(cmip_strt_month,cmip_strt_month+12):
+                        fn=in_cfg['input_root']+'/'+varname+'_'+cmip_file_frq+'hr'+lvlmark+'_'+in_cfg['model_name']
                         fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
-                        fn+='_'+str(self.etl_strt_time.year)+f"{month:02}"+'010600-'+str(self.etl_strt_time.year+1)+'01010000.nc'
-                    
+                        fn+='_'+str(cmip_strt_year)+f"{month:02}"+'010600-'+str(cmip_strt_year)+f"{(month+1):02}"+'010000.nc'
+                        if month == 12:
+                            fn=in_cfg['input_root']+'/'+varname+'_'+cmip_file_frq+'hr'+lvlmark+'_'+in_cfg['model_name']
+                            fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                            fn+='_'+str(cmip_strt_year)+f"{month:02}"+'010600-'+str(cmip_strt_year+1)+'01010000.nc'
+                        utils.write_log(print_prefix+'Loading '+fn)
+                        ds=xr.open_dataset(fn)
+                        ds_list.append(ds)
+                    ds_merged = xr.concat(ds_list, dim='time')
+                    self.ds[varname]=ds_merged[varname].sel(
+                        time=slice(self.etl_strt_time,self.etl_end_time))
+                    ds.close()
+
+#MIROC6- 3hr files just small change in file name
+                elif varname in ['tas', 'huss', 'mrsos'] : # 3hr no lvlmark files for miroc6
+                    fn=in_cfg['input_root']+'/'+varname+'_'+'3hr'+lvlmark+'_'+in_cfg['model_name']
+                    fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                    fn+='_'+(cmip_strt_time).strftime('%Y%m')+'010300-'+(cmip_end_time).strftime('%Y%m')+'010000.nc'
                     utils.write_log(print_prefix+'Loading '+fn)
                     ds=xr.open_dataset(fn)
-                    ds_list.append(ds)
-                ds_merged = xr.concat(ds_list, dim='time')
-                self.ds[varname]=ds_merged[varname].sel(
-                time=slice(self.etl_strt_time,self.etl_end_time))
-                ds.close()
-            
-            elif varname in ['tas', 'huss', 'mrsos']  and in_cfg['model_name'] == 'MIROC6' : # 3hr no lvlmark files for miroc6
-                fn=in_cfg['input_root']+'/'+varname+'_'+'3hr'+lvlmark+'_'+in_cfg['model_name']
+                    self.ds[varname]=ds[varname].sel(
+                        time=slice(self.etl_strt_time,self.etl_end_time))
+                    ds.close()
+
+#MIROC6 - tos handle
+                elif varname == 'tos':
+                    #historical handle
+                    if experiment_id == 'historical':
+                        if cmip_strt_year >= 2010:
+                            fn= fn=in_cfg['input_root']+'/'+'tos_6hr_MIROC6_historical_r1i1p1f1_gn_201001010600-201501010000.nc'
+                        for stdecade in range(1980, 2010, 10):
+                            if cmip_strt_year >= stdecade and cmip_strt_year < stdecade + 10:
+                                fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
+                                fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                                fn+='_'+str(stdecade)+'01010600-'+str(stdecade+10)+'01010000.nc'
+                                break
+                        utils.write_log(print_prefix+'Loading '+fn)
+                        ds=xr.open_dataset(fn)
+                        self.ds[varname]=ds[varname].sel(
+                            time=slice(self.etl_strt_time,self.etl_end_time))
+                        ds.close()
+                    #tos-future scenarios
+                    else:
+                        if cmip_strt_year < 2020:
+                            fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
+                            fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                            fn+='_'+'201501010600-202001010000.nc'
+                        for stdecade in range(2020, 2100, 10):
+                            if cmip_strt_year >= stdecade and cmip_strt_year < stdecade + 10:
+                                fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
+                                fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                                fn+='_'+str(stdecade)+'01010600-'+str(stdecade+10)+'01010000.nc'
+                                break
+                        utils.write_log(print_prefix+'Loading '+fn)
+                        ds=xr.open_dataset(fn)
+                        self.ds[varname]=ds[varname].sel(
+                            time=slice(self.etl_strt_time,self.etl_end_time))
+                        ds.close()
+#MIROC6-other normal variables with 6hr time interval
+                else:
+                    fn=in_cfg['input_root']+'/'+varname+'_'+cmip_file_frq+'hr'+lvlmark+'_'+in_cfg['model_name']
+                    fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                    fn+='_'+in_cfg['cmip_strt_ts']+'-'+in_cfg['cmip_end_ts']+'.nc'
+                    utils.write_log(print_prefix+'Loading '+fn)
+                    ds=xr.open_dataset(fn)
+                    self.ds[varname]=ds[varname].sel(
+                        time=slice(self.etl_strt_time,self.etl_end_time))
+                    ds.close()
+#old code this is written for MPI-ESM-HR
+            else:   
+                fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
                 fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
-                fn+='_'+(self.etl_strt_time).strftime('%Y%m')+'010300-'+(self.etl_end_time).strftime('%Y%m')+'010000.nc'
-                utils.write_log(print_prefix+'Loading '+fn)
-                ds=xr.open_dataset(fn)
-                sixhrds=ds.resample(time='6H').nearest()
-                self.ds[varname]=sixhrds[varname].sel(
-                    time=slice(self.etl_strt_time,self.etl_end_time))
-                ds.close()
-            else:
+                fn+='_'+in_cfg['cmip_strt_ts']+'-'+in_cfg['cmip_end_ts']+'.nc'
                 utils.write_log(print_prefix+'Loading '+fn)
                 ds=xr.open_dataset(fn)
                 self.ds[varname]=ds[varname].sel(
@@ -202,9 +257,9 @@ class CMIPHandler(object):
                         method='linear',kwargs={"fill_value": "extrapolate"})
             elif lvltype=='2d':
                 if varname=='tos':
-                    ocn_da=ds.interpolate_na(dim='i',
+                    ocn_da=ds.interpolate_na(dim='x',
                         method='linear',fill_value="extrapolate")
-                    ocn_da=ocn_da.interpolate_na(dim='j',
+                    ocn_da=ocn_da.interpolate_na(dim='y',
                         method='linear',fill_value="extrapolate")
                     grid_x,grid_y=np.meshgrid(new_lon,new_lat)
                     values=ocn_da.values
