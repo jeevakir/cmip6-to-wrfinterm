@@ -1,51 +1,26 @@
 # cmip6-to-wrf intermediate binary files (ungrib output)
 
 ## forked from https://github.com/lzhenn/cmip6-to-wrfinterm
+** if you want to use MPI-ESM-HR you can donwload the utility from that link. This repository can also be used but change the config file and ensure correct csv file in the db folder is chosen**
 
  I have added miroc6 model to the code and monthly 'ps' files are merged to yearly file. then all 3hr files ('tas',''huss','mrsos') are conevrted to 6hr files. all of this are done internally.
 
-
-# Notes from original author Zhenning LI
-
-**CMIP6-to-WRFInterim** uses pure python implementation to convert CMIP6 sub-daily output into WRF intermediate files, which are used to drive the WRF model for regional dynamical downscaling usage.
-Currently, only **MPI-ESM-1-2-HR** model has been teseted in **historical run and SSP1/2/5 scenarios**, you may need proper modifications for other model convension.
-
-<img src="https://raw.githubusercontent.com/Novarizark/cmip6-to-wrfinterm/master/fig/sample_skintemp.png" alt="drawing" style="width:400px;"/><img src="https://raw.githubusercontent.com/Novarizark/cmip6-to-wrfinterm/master/fig/skintemp006hr.png" alt="drawing" style="width:400px;"/>
-
 ## Installation
-Please install python3 using Anaconda3 distribution. [Anaconda3](https://www.anaconda.com/products/individual) with python3.8 and 3.9 has been deeply tested, lower version of python3 may also work (without testing). If `numpy`, `pandas`, `scipy`, `xarray`, `netcdf4` are properly installed, you may skip the installation step.
+please install libraries from requiremtns.txt
+python3.8 and 3.9 is tested. If `numpy`, `pandas`, `scipy`, `xarray`, `netcdf4` are properly installed, you may skip the installation step.
 
-While, we recommend to create a new environment in Anaconda and install the `requirements.txt`:
-
-```bash
-conda create -n test_c2w python=3.9
-conda activate test_c2w
-pip install -r requirements.txt
-```
-
-## Quick start
-
+run the utility by the following command
 ```bash
 python3 run_c2w.py
 ```
-
 If you successfully run the above command (it is okay to see some FutureWarnings), you should see `CMIP6:2100-01-02_00` and `CMIP6:2100-01-02_00` in the `./output` folder.
-(See [Troubleshooting](https://github.com/lzhenn/cmip6-to-wrfinterm#troubleshooting) if you are a Windows Subsystem user.)
+If you are in windows the files will look like `CMIP6_2100-01-02_00` and `CMIP6_2100-01-02_00`
+
 Copy or link the two intermidiate files to your WPS folder, prepare your **geo_em** files and setup your `namelist.wps` properly, now you are ready to run `metgrid.exe` and the following WRF procedures.
 
-There is a simple example of `namelist.wps` and `namelist.input` covering the East Asian region in the `./sample` folder for testing.
-
-If you run the sample case successfully, you are expected to see snapshots of the skin temperature in the initial condition and after 6-hour WRFv4.3 run as shown as above.
 
 
 ## Troubleshooting
-
-**(Dec 19, 2022)**: Lack of suitable source variables from CMIP6 datasets to drive the dynamical downscaling are common. For example, the available 6-hour `ts` variable in SSP is missing in historical run of `MPI-ESM1-2-HR` output. We cannot directly map the `SST` by `ts`.
-One trade-off is using the `tas` to represent both the land surface and sea surface temperature, just as you could find in the `MPI-ESM1-2-HR_HIST.csv` vtable. While this is not a good strategy. 
-For accurate representation of sea surface temperature, you may need to use 3-hour `tos` variable and set `cmip_frq=3` in `config.ini` to generate the 3-hour SST in historical run (see the Vtable with suffix `SST`). Make sure to use a different `output_prefix` such as `SST`. (Thanks [Dr. Paul Nalon from ICHEC](https://www.ichec.ie/staff/paul-nolan-phd) and [Dr. Sium Gebremariam from PSU](http://www.met.psu.edu/people/stg5265) helping with this.) 
-
-**(Nov 27, 2022)**: According to feedback from several users, if you are using Windows Subsystem for Linux (WSL, typically Ubuntu from Microsoft Store), please note Windows does **NOT** support colon ":" in the file name.
-You may rename the output file name or try a pure Linux platform.
 
 ## Usage
 
@@ -154,8 +129,6 @@ CMIP6 data can be downloaded from the [LLNL interface](https://esgf-node.llnl.go
 ![](https://raw.githubusercontent.com/Novarizark/cmip6-to-wrfinterm/master/fig/var_table.png)
 
 You may setup your own variable mapping table in `./db/${MODEL_NAME}.csv` if you want to use other models.
-
-**Any question, please contact Zhenning LI (zhenningli91@gmail.com). Since I am receiving many requests recently, please have a short introduction of yourself (e.g. affiliation, research field, etc.) :-).**
 
 **You can also contact Jeevanand Palanisamy (jeevanand0013@gmail.com) for any doubts and if the original developer is busy. His approach is different than mine** 
 
