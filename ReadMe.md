@@ -1,9 +1,13 @@
 # cmip6-to-wrf intermediate binary files (ungrib output)
 
-## forked from https://github.com/lzhenn/cmip6-to-wrfinterm
-** if you want to use MPI-ESM-HR you can donwload the utility from that link. This repository can also be used but change the config file and ensure correct csv file in the db folder is chosen**
+### if you want to use MPI-ESM-HR you can donwload the utility from that link. This repository can also be used but change the config file and ensure correct csv file in the db folder is chosen 
 
  I have added miroc6 model to the code and monthly 'ps' files are merged to yearly file. then all 3hr files ('tas',''huss','mrsos') are conevrted to 6hr files. all of this are done internally.
+ 
+variable 'tos' is needed for SST calculations but, is available in Oday format for miroc6 and the file naming conventions are different. this utility requires the precense of all timestamps to work properly. Hence i wrote a shell script that takes decadal tos_Oday files and converts them to 6-hourly files suitable for this utility. you can find the script [here](https://github.com/jeevakir/data_handling/blob/main/shell/tos-cdo-decade-merge.sh)
+```
+https://github.com/jeevakir/data_handling/blob/main/shell/tos-cdo-decade-merge.sh
+```
 
 ## Installation
 please install libraries from requiremtns.txt
