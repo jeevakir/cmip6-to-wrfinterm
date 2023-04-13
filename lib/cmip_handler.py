@@ -180,7 +180,9 @@ class CMIPHandler(object):
                     #historical handle
                     if experiment_id == 'historical':
                         if cmip_strt_year >= 2010:
-                            fn= fn=in_cfg['input_root']+'/'+'tos_6hr_MIROC6_historical_r1i1p1f1_gn_201001010600-201501010000.nc'
+                            fn= fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
+                            fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
+                            fn+='_'+'201001010600-201501010000.nc'
                         for stdecade in range(1980, 2010, 10):
                             if cmip_strt_year >= stdecade and cmip_strt_year < stdecade + 10:
                                 fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
@@ -194,11 +196,11 @@ class CMIPHandler(object):
                         ds.close()
                     #tos-future scenarios
                     else:
-                        if cmip_strt_year < 2020:
+                        if cmip_strt_year >= 2095:
                             fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
                             fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
-                            fn+='_'+'201501010600-202001010000.nc'
-                        for stdecade in range(2020, 2100, 10):
+                            fn+='_'+'209501010600-210101010000.nc'
+                        for stdecade in range(2015, 2095, 10):
                             if cmip_strt_year >= stdecade and cmip_strt_year < stdecade + 10:
                                 fn=in_cfg['input_root']+'/'+varname+'_'+in_cfg['cmip_frq']+'hr'+lvlmark+'_'+in_cfg['model_name']
                                 fn=fn+'_'+in_cfg['exp_id']+'_'+in_cfg['esm_flag']+'_'+in_cfg['grid_flag']
